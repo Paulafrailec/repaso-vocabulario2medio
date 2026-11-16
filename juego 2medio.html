@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Desafío de sinónimos</title>
+<style>
+:root{--bg:#f4f6f1;--card:#fff;--tx:#23303b;--mu:#66717b;--ac:#d9730d;--ok:#2e8b57;--okbg:#e3f4ea;--ko:#c0392b;--kobg:#fbe6e3;--bd:#dcd8cf;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171b1f;--card:#222830;--tx:#eceff2;--mu:#9aa5af;--ac:#f0a050;--ok:#5cc48a;--okbg:#1e3a2b;--ko:#ef7b6e;--kobg:#412522;--bd:#38414a}}
+:root[data-theme="dark"]{--bg:#171b1f;--card:#222830;--tx:#eceff2;--mu:#9aa5af;--ac:#f0a050;--ok:#5cc48a;--okbg:#1e3a2b;--ko:#ef7b6e;--kobg:#412522;--bd:#38414a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;justify-content:center;padding:20px 14px}
+main{width:100%;max-width:560px}
+h1{font-size:1.3rem;margin:0 0 4px;text-align:center}
+.sub{color:var(--mu);text-align:center;font-size:.9rem;margin-bottom:14px}
+.steps{display:flex;gap:6px;margin-bottom:10px}
+.steps i{flex:1;height:10px;border-radius:99px;background:var(--bd)}
+.steps i.cur{background:var(--ac);opacity:.55}
+.steps i.ok{background:var(--ok)}
+.steps i.ko{background:var(--ko)}
+.meta{display:flex;justify-content:space-between;color:var(--mu);font-size:.9rem;margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:22px 16px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.q{font-size:1rem;color:var(--mu);margin:0 0 6px;text-align:center}
+.word{font-size:2.1rem;font-weight:800;letter-spacing:.04em;color:var(--ac);margin:0 0 18px;text-align:center}
+.opt{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:var(--card);color:var(--tx);border:2px solid var(--bd);border-radius:12px;padding:13px 14px;margin-bottom:10px;font-size:1.05rem;cursor:pointer;font-family:inherit}
+.opt:hover:not(:disabled){border-color:var(--ac)}
+.opt b{display:inline-flex;width:28px;height:28px;border-radius:50%;background:var(--bd);align-items:center;justify-content:center;font-size:.85rem;flex:none}
+.opt.ok{background:var(--okbg);border-color:var(--ok)}
+.opt.ko{background:var(--kobg);border-color:var(--ko)}
+.opt:disabled{cursor:default}
+.fb{min-height:26px;margin:4px 0 12px;font-weight:700;text-align:center}
+.fb.ok{color:var(--ok)}.fb.ko{color:var(--ko)}
+.btn{display:block;width:100%;background:var(--ac);color:#fff;border:0;border-radius:12px;padding:13px;font-size:1.05rem;font-weight:700;cursor:pointer;font-family:inherit}
+.btn:disabled{opacity:.4;cursor:default}
+.end{text-align:center}
+.score{font-size:3rem;font-weight:800;color:var(--ac);margin:6px 0}
+.rev{text-align:left;margin:16px 0;font-size:.95rem}
+.rev div{padding:8px 0;border-top:1px solid var(--bd)}
+.hide{display:none}
+</style>
+</head>
+<body>
+<main>
+<h1>🧠 Desafío de sinónimos</h1>
+<div class="sub">Elige el sinónimo correcto de cada palabra</div>
+<div id="game">
+  <div class="steps" id="steps"></div>
+  <div class="meta"><span id="num"></span><span id="pts"></span></div>
+  <div class="card">
+    <p class="q">¿Cuál es un sinónimo correcto de la palabra…?</p>
+    <p class="word" id="word"></p>
+    <div id="opts"></div>
+    <div class="fb" id="fb"></div>
+    <button class="btn" id="next" disabled>Siguiente</button>
+  </div>
+</div>
+<div id="end" class="card end hide">
+  <div style="font-size:2.4rem" id="emoji">🏆</div>
+  <div class="score" id="final"></div>
+  <div id="msg"></div>
+  <div class="rev" id="rev"></div>
+  <button class="btn" id="again">Jugar de nuevo</button>
+</div>
+</main>
+<script>
+const Q=[
+{w:"ALFÉIZAR",o:["Techo","Fachada","Quicio","Repisa"],c:3},
+{w:"ESCUETAS",o:["Extensas","Breves","Complejas","Detalladas"],c:1},
+{w:"DERROCAMIENTO",o:["Destitución","Ratificación","Ascenso","Coronación"],c:0},
+{w:"CAMARADERÍA",o:["Rivalidad","Enemistad","Compañerismo","Hostilidad"],c:2},
+{w:"HOLLAR",o:["Volar","Pisar","Evitar","Saltar"],c:1},
+{w:"PARCO",o:["Excesivo","Goloso","Frugal","Desbocado"],c:2},
+{w:"IMPUNIDAD",o:["Castigo","Sanción","Condena","Exención"],c:3},
+{w:"VESTIGIOS",o:["Indicios","Secretos","Resultados","Orígenes"],c:0}
+];
+const L="ABCD";
+let i,score,streak,best,log,done,cur;
+const $=id=>document.getElementById(id);
+const shuffle=a=>{a=a.slice();for(let k=a.length-1;k>0;k--){const j=Math.floor(Math.random()*(k+1));[a[k],a[j]]=[a[j],a[k]]}return a};
+function start(){i=0;score=0;streak=0;best=0;log=[];$("game").classList.remove("hide");$("end").classList.add("hide");
+  $("steps").innerHTML=Q.map(()=>"<i></i>").join("");show()}
+function show(){
+  done=false;const q=Q[i];
+  cur=shuffle(q.o.map((t,k)=>({t:t,right:k===q.c})));
+  [...$("steps").children].forEach((s,k)=>{if(k===i)s.classList.add("cur")});
+  $("num").textContent="Pregunta "+(i+1)+" de "+Q.length;
+  $("pts").textContent="Puntaje: "+score+" / "+Q.length+(streak>=2?"  🔥 racha "+streak:"");
+  $("word").textContent=q.w;
+  $("fb").textContent="";$("fb").className="fb";
+  $("next").disabled=true;
+  $("next").textContent=i===Q.length-1?"Ver resultado":"Siguiente";
+  const box=$("opts");box.innerHTML="";
+  cur.forEach((o,k)=>{
+    const b=document.createElement("button");b.className="opt";
+    b.innerHTML="<b>"+L[k]+"</b><span>"+o.t+"</span>";
+    b.onclick=()=>pick(k);box.appendChild(b);
+  });
+}
+function pick(k){
+  if(done)return;done=true;
+  const bs=[...$("opts").children],r=cur.findIndex(o=>o.right),good=k===r;
+  bs.forEach(b=>b.disabled=true);
+  bs[r].classList.add("ok");
+  const st=$("steps").children[i];st.classList.remove("cur");
+  if(good){score++;streak++;best=Math.max(best,streak);st.classList.add("ok");$("fb").textContent=streak>=2?"¡Correcto! 🔥 Racha de "+streak:"¡Correcto! +1 punto";$("fb").classList.add("ok")}
+  else{streak=0;bs[k].classList.add("ko");st.classList.add("ko");$("fb").textContent="Incorrecto. La respuesta era "+cur[r].t;$("fb").classList.add("ko")}
+  log.push({w:Q[i].w,good:good,r:cur[r].t,e:cur[k].t});
+  $("pts").textContent="Puntaje: "+score+" / "+Q.length+(streak>=2?"  🔥 racha "+streak:"");
+  $("next").disabled=false;
+}
+function finish(){
+  $("game").classList.add("hide");$("end").classList.remove("hide");
+  const pct=score/Q.length;
+  $("final").textContent=score+" / "+Q.length+" puntos";
+  $("emoji").textContent=pct>=.85?"🏆":pct>=.6?"👏":"💪";
+  $("msg").textContent=(pct>=.85?"¡Excelente dominio del vocabulario!":pct>=.6?"¡Buen trabajo! Repasa las que fallaste.":"¡Sigue practicando, tú puedes!")+" Mejor racha: "+best;
+  $("rev").innerHTML=log.map(l=>"<div>"+(l.good?"✅":"❌")+" <b>"+l.w+"</b> → "+l.r+(l.good?"":" <span style='color:var(--mu)'>(marcaste: "+l.e+")</span>")+"</div>").join("");
+}
+$("next").onclick=()=>{if(!done)return;i++;i<Q.length?show():finish()};
+$("again").onclick=start;
+start();
+</script>
+</body>
+</html>
